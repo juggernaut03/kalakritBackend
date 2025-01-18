@@ -123,7 +123,7 @@ function initializeServer() {
         'http://localhost:19006',      // Expo web development server
         'exp://localhost:19000',       // Expo Go development client
         'http://localhost:19000',      // Alternative Expo local URL
-        'exp://192.168.1.255:19000',    // Replace with your local IP
+        'exp://192.168.0.106:19000',    // Replace with your local IP
           
     ],
     credentials: true
