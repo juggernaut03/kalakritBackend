@@ -17,6 +17,25 @@ const notificationRoutes = require('./routes/notifications');
 // Load environment variables
 dotenv.config();
 
+// Verify environment variables at startup
+const verifyEnvironment = () => {
+  const requiredVars = [
+    'MONGODB_URI',
+    'CLOUDINARY_CLOUD_NAME',
+    'CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET'
+  ];
+
+  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    console.error('Missing required environment variables:', missingVars);
+    process.exit(1);
+  }
+
+  console.log('Environment variables verified');
+};
+
 // Create Express app
 const app = express();
 
@@ -24,6 +43,7 @@ const app = express();
 connectDB()
   .then(() => {
     console.log('Database setup completed');
+    verifyEnvironment();
     initializeServer();
   })
   .catch(error => {
@@ -34,14 +54,28 @@ connectDB()
 function initializeServer() {
   // Security Middleware
   app.use(helmet());
-  app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-    credentials: true
-  }));
+  
+  // Configure CORS
+  const corsOptions = {
+    origin: [
+      process.env.CORS_ORIGIN || 'http://localhost:3000',
+      'http://localhost:19006',      // Expo web development server
+      'exp://localhost:19000',       // Expo Go development client
+      'http://localhost:19000',      // Alternative Expo local URL
+      'exp://192.168.1.102:19000',   // Local IP
+      'http://192.168.1.102:19000',  // Local IP HTTP
+      'http://192.168.1.102:3000'    // Local IP Backend
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  };
 
-  // Request Parsing Middleware
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(cors(corsOptions));
+
+  // Request Parsing Middleware with increased limit for images
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Logging Middleware
   if (process.env.NODE_ENV === 'development') {
@@ -50,12 +84,6 @@ function initializeServer() {
 
   // Static Files
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-  // Error Handling Middleware
-  app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Something broke!');
-  });
 
   // API Routes
   app.use('/api/auth', authRoutes);
@@ -66,12 +94,35 @@ function initializeServer() {
 
   // Health Check Route
   app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'OK', timestamp: new Date() });
+    res.status(200).json({ 
+      status: 'OK', 
+      timestamp: new Date(),
+      env: process.env.NODE_ENV,
+      cloudinaryConfigured: !!process.env.CLOUDINARY_CLOUD_NAME
+    });
   });
+
+  // Test route for environment variables
+  if (process.env.NODE_ENV === 'development') {
+    app.get('/api/config-test', (req, res) => {
+      res.json({
+        cloudinaryConfigured: {
+          cloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
+          apiKey: !!process.env.CLOUDINARY_API_KEY,
+          apiSecret: !!process.env.CLOUDINARY_API_SECRET
+        },
+        nodeEnv: process.env.NODE_ENV,
+        corsOrigins: corsOptions.origin
+      });
+    });
+  }
 
   // 404 Handler
   app.use((req, res) => {
-    res.status(404).json({ message: 'Route not found' });
+    res.status(404).json({ 
+      message: 'Route not found',
+      path: req.path
+    });
   });
 
   // Global Error Handler
@@ -98,36 +149,24 @@ function initializeServer() {
   });
 
   // Start server
-  const PORT = process.env.PORT || 5000;
+  const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
+    console.log('CORS enabled for origins:', corsOptions.origin);
   });
 
   // Handle unhandled promise rejections
   process.on('unhandledRejection', (err) => {
     console.error('Unhandled Promise Rejection:', err);
-    // Close server & exit process
-    server.close(() => process.exit(1));
+    process.exit(1);
   });
 
   // Handle uncaught exceptions
   process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
-    // Close server & exit process
     process.exit(1);
   });
-
-  app.use(cors({
-    origin: [
-        'http://localhost:19006',      // Expo web development server
-        'exp://localhost:19000',       // Expo Go development client
-        'http://localhost:19000',      // Alternative Expo local URL
-        'exp://192.168.1.255:19000',    // Replace with your local IP
-          
-    ],
-    credentials: true
-}));
 }
 
-module.exports = app; // For testing purposes
+module.exports = app;
