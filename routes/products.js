@@ -55,4 +55,18 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+router.get('/', async (req, res) => {
+  try {
+    const { category } = req.query;
+    const query = category ? { category } : {};
+    
+    const products = await Product.find(query)
+      .sort({ createdAt: -1 });
+      
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

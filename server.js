@@ -13,6 +13,7 @@ const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
 const walletRoutes = require('./routes/wallet');
 const notificationRoutes = require('./routes/notifications');
+const categoryRoutes = require('./routes/categories');
 
 // Load environment variables
 dotenv.config();
@@ -91,6 +92,7 @@ function initializeServer() {
   app.use('/api/orders', orderRoutes);
   app.use('/api/wallet', walletRoutes);
   app.use('/api/notifications', notificationRoutes);
+  app.use('/api/categories', categoryRoutes);
 
   // Health Check Route
   app.get('/health', (req, res) => {
@@ -173,7 +175,7 @@ function initializeServer() {
         'http://localhost:19006',      // Expo web development server
         'exp://localhost:19000',       // Expo Go development client
         'http://localhost:19000',      // Alternative Expo local URL
-        'exp://192.168.0.106:19000',    // Replace with your local IP
+        'exp://192.168.1.102:19000',    // Replace with your local IP
           
     ],
     credentials: true

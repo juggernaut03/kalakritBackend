@@ -6,6 +6,8 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Notification = require('../models/Notification');
+const Category = require('../models/Category');
+
 
 const initializeDatabase = async () => {
   try {
@@ -113,9 +115,48 @@ const initializeDatabase = async () => {
         }
       });
     }
+    if (!collectionNames.includes('categories')) {
+      console.log('Creating categories collection...');
+      await mongoose.connection.db.createCollection('categories', {
+        validator: {
+          $jsonSchema: {
+            bsonType: "object",
+            required: ["name", "icon", "description"],
+            properties: {
+              name: {
+                bsonType: "string",
+                description: "Category name must be a string and is required"
+              },
+              icon: {
+                bsonType: "string", 
+                description: "Icon URL must be a string and is required"
+              },
+              description: {
+                bsonType: "string",
+                description: "Description must be a string and is required"
+              },
+              products: {
+                bsonType: "number",
+                minimum: 0,
+                description: "Product count must be a non-negative number"
+              }
+            }
+          }
+        }
+      });
+    }
+ 
 
     // Create indexes
     console.log('Creating indexes...');
+
+
+
+    // categoris indexes
+
+    await Category.collection.createIndex({ name: 1 }, { unique: true });
+    await Category.collection.createIndex({ products: 1 });
+ 
     
     // User indexes
     await User.collection.createIndex({ email: 1 }, { unique: true });
